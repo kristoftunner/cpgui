@@ -8,6 +8,8 @@ class LogParser():
     def __init__(self):
         self.messages = []
         self.message_types = []
+        self.modules = []
+        self.functions = []
 
     def update(self, input_message):
         """Read the input message and parse it into the message list.
@@ -25,6 +27,11 @@ class LogParser():
 
         #update the parsed message arguments
         self.messages.append([type,function,module,timestamp,message])
+
+        if function not in self.functions:
+            self.functions.append(function)
+        if module not in self.modules:
+            self.modules.append(module)
 
     def get_message_by_type(self, type):
         """sorts the message list by message type and return the selected ones.    
