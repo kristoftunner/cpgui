@@ -1,10 +1,9 @@
 import time
-
+import queue
 class LogParser():
     """
         class implementing the parsing of the input catchpenny logs for real-time debugging
     """
-    logMessages = {}
     def __init__(self):
         self.messages = []
         self.message_types = []
@@ -125,8 +124,91 @@ class LogParser():
                                 selected_messages.append(msg)
         return selected_messages
 
+
+class LogParserHandler:
+    def __init__(self):
+        self.lp = LogParser()
+        self.source = "uart"
+        self.fileRead = False
+        self.readFilename = ""
+        self.saveFilename = ""
+        self.queue = queue.Queue()
+        
+    def update_input_source(self,source,filename):
+        self.source = source
+        self.fileRead = False
+        self.readFilename = filename
+        
+    def update_write_filename(self,filename):
+        self.saveFilename = filename
+    
+    def update(self):
+        if self.source == "uart":
+            if not self.queue.empty():
+                msg = self.queue.get()
+                self.lp.update(msg)
+                
+        elif self.source == "file":
+            # read the lines from file
+            if self.fileRead == False:
+                f = open(self.readFilename)
+                messages = f.readlines()
+                for line in messages:
+                    self.lp.update(line)
+                self.fileRead = True
+                f.close()
+    
+    def save_to_file(self):
+        if self.saveFilename:
+            f = open(self.saveFilename,"w")  
+            for m in self.lp.messages:
+                message = " ".join(m)
+                "".join((message,"\n"))
+                f.write(message) 
+            f.close() 
+    
+    def get_messages(self):
+        return self.lp.messages
+    
+    def get_functions(self):
+        return self.lp.functions
+    
+    def get_modules(self):
+        return self.lp.modules
+    
+    def get_message_by_type(self, type):
+        return self.lp.get_message_by_type(type)
+    
+    def get_message_by_function(self, function):
+        return self.lp.get_message_by_function(function)
+        
+    def get_message_by_module(self, module):
+        return self.lp.get_message_by_module(module)
+    
+    def get_message_by_time(self, begin_timestamp, end_timestamp):
+        return self.lp.get_message_by_time(begin_timestamp, end_timestamp)
+     
 if __name__ == '__main__':
-    log_message1 = "[INF] main teslactrl 2021-05-02_05:23 Logging started"
+    lph = LogParserHandler()
+    lph.update_input_source("file","gui\src\example_msg")
+    lph.update_write_filename("asd")
+    lph.update()
+    lph.save_to_file()
+    modules = lph.get_modules()
+    functions = lph.get_functions()
+    
+    begin_timestamp = time.gmtime(1619820000)
+    end_timestamp = time.gmtime(1622498400)
+    messages_by_time = lph.get_message_by_time(begin_timestamp,end_timestamp)
+    messages_by_module = lph.get_message_by_module("teslactrl")
+    messages_by_function = lph.get_message_by_function("main")
+    
+    print("modules:", modules)
+    print("functions:", functions)
+    print("messages by time:", messages_by_time)
+    print("messages by function[main]:", messages_by_function)
+    print("messages by module[teslactrl]:", messages_by_module)
+    """log_message1 = "[INF] main teslactrl 2021-05-02_05:23 Logging started"
     log_message2 = "[WRN] main gsm 2021-05-06_07:23 Logging started"
     log_message3 = "[ERR] gsm_controlProcess gsm 2022-06-04_05:23 Logging started"
     log_message4 = "[INF] main gsm 2023-10-04_09:13 Logging started"
@@ -160,6 +242,6 @@ if __name__ == '__main__':
     print("Messages from the \"main\" function")
     messages_by_function = lp.get_message_by_function("main")
     for msg in messages_by_function:
-        print(msg)
+        print(msg)"""
 
     
