@@ -8,7 +8,7 @@ SCREENS = [{"ch1" : 25}, {"ch2" : 25}, {"ch3" : 25}, {"battery" : 24}]
 
 class TeslaSerialMessage():
   def __init__(self) -> None:
-    self.measurements = {"voltages" : [], "temperatures" : []}
+    self.measurements = {"voltages" : np.zeros((1,80), dtype=np.float32), "temperatures" : np.zeros((1,50), dtype=np.float32)}
     self.tesla_setpoints = {"ch1" : {"power" : 0}, "ch2" : {"power" : 0}, "ch3" : {"power" : 0}}
 
 class SerialBuffer():
@@ -29,12 +29,19 @@ class TeslaSerialReader():
 
   def parse_message(self, sbuffer : SerialBuffer):
     if sbuffer.source == "battery":
-      matched_lines = re.findall("\#[0-1A-B].*\n", self.sbuffer.buffer)
+      matched_lines = re.findall("\#[0-9A-B].*\n", sbuffer.buffer)
 
       #iterate trough half of the list and extract temperatures and voltages
-      for single_match in matched_lines[0:len(matched_lines)//2]:
-        [self.message.measurements["voltages"].append(float(voltage)) for voltage in re.findall("[0-9]*\.[0-9]*",single_match)[0]]
-        [self.message.measurements["temperatures"].append(float(temperature)) for temperature in re.findall(" [0-9]+[ \n]", single_match)]
+      voltages = list()
+      temperatures = list()
+      for single_match in matched_lines[0:len(matched_lines)//2 + 1]:
+        [voltages.append(float(voltage)) for voltage in re.findall("[0-9]*\.[0-9]*",single_match)]
+        [temperatures.append(float(temperature)) for temperature in re.findall(" [0-9]+[ \n]", single_match)]
+      voltages = np.array(voltages, dtype=np.float32).reshape((1,80))
+      temperatures = np.array(temperatures, dtype=np.float32).reshape((1,50))
+      self.message.measurements["voltages"] = np.concatenate((self.message.measurements["voltages"], voltages), axis=0)
+      self.message.measurements["temperatures"] = np.concatenate((self.message.measurements["temperatures"], temperatures), axis=0)
+    
     elif sbuffer.source == "ch1":
       pass
     elif sbuffer.source == "ch2":
@@ -90,7 +97,7 @@ class TeslaManager():
   def update_measurements(self):
     """ flush the input queue and get the latest message"""
     while not self.input_queue.empty():
-      tesla_status = queue.get()
+      tesla_status = self.input_queue.get()
   
   def get_temperatures(self):
     data = np.zeros((1,50), dtype=np.float32)
