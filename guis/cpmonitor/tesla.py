@@ -2,13 +2,14 @@ import serial
 import queue
 from typing import Dict
 import re, logging
+import numpy as np
 
 SCREENS = [{"ch1" : 25}, {"ch2" : 25}, {"ch3" : 25}, {"battery" : 24}]
 
 class TeslaSerialMessage():
   def __init__(self) -> None:
     self.measurements = {"voltages" : [], "temperatures" : []}
-    self.tesla_setpoints = {"ch1" : {"voltage" : None, "current" : None}, "ch2" : {"voltage" : None, "current" : None}, "ch3" : {"voltage" : None, "current" : None}}
+    self.tesla_setpoints = {"ch1" : {"power" : 0}, "ch2" : {"power" : 0}, "ch3" : {"power" : 0}}
 
 class SerialBuffer():
   def __init__(self, buffer : str, source : str) -> None:
@@ -16,7 +17,7 @@ class SerialBuffer():
     self.source = source
 
 class TeslaSerialReader():
-  def __init__(self, port : str, tesla_id, serial_output : queue.Queue, serial_input: queue.Queue) -> None:
+  def __init__(self, port : str, tesla_id : str, serial_input : queue.Queue, serial_output: queue.Queue) -> None:
     self.logger = logging.getLogger("cplog")
     self.serial_input = serial_input
     self.serial_output = serial_output
@@ -67,24 +68,24 @@ class TeslaSerialReader():
       self.serial_output.put(self.message)
     self.serial_output.put(self.message)
 
-  def change_screen(self, screen : SCREENS):
-    self.current_screen = screen
-
 class TeslaManager():
-  def __init__(self, serial_input : queue.Queue, serial_output : queue.Queue) -> None:
+  def __init__(self, tesla_id : str, serial_input : queue.Queue, serial_output : queue.Queue) -> None:
     self.logger = logging.getLogger("cplog")
+    self.id = tesla_id
     self.input_queue = serial_output
     self.output_queue = serial_input
     self.tesla_status = TeslaSerialMessage()
   
   def start(self, power_setpoint : float, channel : str):
+    self.logger.debug("started {} tesla".format(self.id))
     output_message = TeslaSerialMessage()
-    voltage = 240.0
-    current = power_setpoint / voltage
-    output_message.tesla_setpoints[channel] = {"voltage" : voltage, "current" : current}
+    output_message.tesla_setpoints[channel] = {"power" : power_setpoint}
+    self.output_queue.put(output_message)
 
   def stop(self):
-    pass
+    self.logger.debug("stopped {} tesla".format(self.id))
+    output_message = TeslaSerialMessage()
+    self.output_queue.put(output_message) 
 
   def update_measurements(self):
     """ flush the input queue and get the latest message"""
@@ -92,8 +93,11 @@ class TeslaManager():
       tesla_status = queue.get()
   
   def get_temperatures(self):
-    return self.measurements["temperatures"]
+    data = np.zeros((1,50), dtype=np.float32)
+    data[0,:] = self.tesla_status.measurements["temperatures"]
+    return data 
 
   def get_voltages(self):
-    return self.measurements["voltages"]
-    
+    data = np.zeros((1,80), dtype=np.float32)
+    data[0,:] = self.tesla_status.measurements["voltages"]
+    return data 

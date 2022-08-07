@@ -73,8 +73,6 @@ class MyApp(QWidget):
 
         canvas.installEventFilter(self)
 
-        box = QVBoxLayout()
-        box.addWidget(frame)
 
         frameContainer.addWidget(canvas)
 

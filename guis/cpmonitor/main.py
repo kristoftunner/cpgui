@@ -1,47 +1,31 @@
-import tesla, re, os, sys
-from PyQt5.uic import loadUi
-from PyQt5 import QtWidgets
-from PyQt5.QtWidgets import QVBoxLayout, QDialog, QApplication, QWidget, \
-                            QLabel, QMainWindow, QTabWidget, QFrame, QGridLayout
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib import pyplot as plt
-import numpy as np
+from PyQt5.QtWidgets import QApplication 
+import queue, sys, threading, logging
 
-class AppWindow(QMainWindow):
-  def __init__(self) -> None:
-    super().__init__()
-    loadUi("guis/cpmonitor/cpmonitor.ui", self)
-    self.plot_grid = self.findChild(QGridLayout, "plot_layout")
+# own scripts
+import gui, tesla
 
-  def draw_plots(self):
-    index = 0
-    for col in range(3):
-      for row in range(3):
-        frame = QFrame()
-        frame.setStyleSheet('background-color: white;')
-        frame.setFrameStyle(QFrame.Panel | QFrame.Raised)
-        frameContainer = QVBoxLayout()
+def generate_tesla_input():
+  pass
 
-        data = np.linspace(0,10,10)
-        index += 1
+def lower_tesla_thread():
+  pass
 
-        fig = plt.figure()
-        canvas = FigureCanvasQTAgg(fig)
-        ax = fig.add_subplot()
-        ax.plot(data, '-')
-        canvas.draw()
-
-        canvas.installEventFilter(self)
-
-        box = QVBoxLayout()
-        box.addWidget(frame)
-
-        frameContainer.addWidget(canvas)
-
-        self.plot_grid.addLayout(frameContainer, row, col)
+def upper_tesla_thread():
+  pass
 
 if __name__ == '__main__':
   app = QApplication(sys.argv)
-  window = AppWindow()
+  
+  lower_serial_iqueue = queue.Queue()
+  lower_serial_oqueue = queue.Queue()
+  lower_tesla_serial = tesla.TeslaSerialReader("/dev/ttyUSB0", "lower", lower_serial_iqueue, lower_serial_oqueue)
+  lower_tesla = tesla.TeslaManager("lower", lower_serial_iqueue, lower_serial_oqueue)
+  
+  upper_serial_iqueue = queue.Queue()
+  upper_serial_oqueue = queue.Queue()
+  upper_tesla = tesla.TeslaManager("upper", upper_serial_iqueue, upper_serial_oqueue)
+  upper_tesla_serial = tesla.TeslaSerialReader("/dev/ttyUSB0", "lower", upper_serial_iqueue, upper_serial_oqueue)
+
+  window = gui.AppWindow(upper_tesla, lower_tesla)
   window.show()
   sys.exit(app.exec_())

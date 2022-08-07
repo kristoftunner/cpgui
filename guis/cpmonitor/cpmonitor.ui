@@ -40,7 +40,7 @@
        </attribute>
        <layout class="QHBoxLayout" name="horizontalLayout_2">
         <item>
-         <layout class="QGridLayout" name="plot_layout"/>
+         <layout class="QHBoxLayout" name="plot_layout"/>
         </item>
        </layout>
       </widget>
