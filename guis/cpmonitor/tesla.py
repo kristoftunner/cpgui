@@ -79,6 +79,9 @@ class TeslaSerialReader():
       self.serial_output.put(self.message)
     self.serial_output.put(self.message)
 
+    if not self.serial_input.empty():
+      pass # do the update here
+
 class TeslaManager():
   def __init__(self, tesla_id : str, serial_input : queue.Queue, serial_output : queue.Queue) -> None:
     self.logger = logging.getLogger("cplog")
