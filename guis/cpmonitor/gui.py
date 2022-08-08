@@ -27,13 +27,16 @@ class AppWindow(QMainWindow):
 
     loadUi("guis/cpmonitor/cpmonitor.ui", self)
     self.plot_layout = self.findChild(QHBoxLayout, "plot_layout")
+    self.tab = self.findChild(QTabWidget, "tabWidget")
+    self.tab.setTabText(0, "controls")
+    self.tab.setTabText(1, "battery measuerements")
 
     # update the battery plots
     self.init_battery_plots()
 
     self.battery_timer = QTimer()
     self.battery_timer.timeout.connect(self.draw_battery_plots)
-    self.battery_timer.start(500)
+    self.battery_timer.start(1000)
 
   def init_battery_plots(self):
     self.canvases = []
@@ -66,7 +69,7 @@ class AppWindow(QMainWindow):
     # draw the battery plots
     for index, measurement in enumerate(self.tesla_measurements):
       voltage_canvas = self.canvases[index*2] 
-      voltage_ax = voltage_canvas.figure.axes[0]
+      voltage_ax = voltage_canvas.figure.axes[0] # we have one axe per 
       voltage_ax.plot(self.tesla_measurements[measurement].voltages, 'o')
       voltage_canvas.draw()
       
