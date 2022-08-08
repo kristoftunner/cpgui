@@ -20,7 +20,7 @@ def generate_tesla_input(source : str) -> tesla.SerialBuffer:
 def tesla_serial_thread(tesla_serial : tesla.TeslaSerialReader):
   time.sleep(1)
   sbuffer = generate_tesla_input("battery")
-  tesla_serial.sbuffers.append(sbuffer)
+  tesla_serial.sbuffers["battery"] = sbuffer
   tesla_serial.update()  
 
 def setup_logging():

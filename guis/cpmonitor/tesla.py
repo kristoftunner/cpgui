@@ -8,6 +8,8 @@ SCREENS = [{"ch1" : 25}, {"ch2" : 25}, {"ch3" : 25}, {"battery" : 24}]
 
 class TeslaSerialMessage():
   def __init__(self) -> None:
+    self.measurements_valid = False
+    self.power_setpoints_valid = False
     self.measurements = {"voltages" : np.zeros((1,80), dtype=np.float32), "temperatures" : np.zeros((1,50), dtype=np.float32)}
     self.tesla_setpoints = {"ch1" : {"power" : 0}, "ch2" : {"power" : 0}, "ch3" : {"power" : 0}}
 
@@ -23,7 +25,7 @@ class TeslaSerialReader():
     self.serial_output = serial_output
     self.message = TeslaSerialMessage()
     self.id = tesla_id
-    self.sbuffers = [] 
+    self.sbuffers = {}
     self.baudrate = 115200
     self.port = port
 
@@ -41,7 +43,7 @@ class TeslaSerialReader():
       temperatures = np.array(temperatures, dtype=np.float32).reshape((1,50))
       self.message.measurements["voltages"] = np.concatenate((self.message.measurements["voltages"], voltages), axis=0)
       self.message.measurements["temperatures"] = np.concatenate((self.message.measurements["temperatures"], temperatures), axis=0)
-    
+      self.message.measurements_valid = True
     elif sbuffer.source == "ch1":
       pass
     elif sbuffer.source == "ch2":
@@ -66,12 +68,14 @@ class TeslaSerialReader():
         for i in range(value):
           sbuffer.buffer += ser.readline()
         sbuffer.source = key
-        self.sbuffers.append(sbuffer)
+        self.sbuffers[key] = sbuffer
         self.logger.debug("received at tesla {}: from channel:{} - {}".format(self.id, sbuffer.source, sbuffer.buffer))
   
   def update(self):
+    self.message.measurements_valid = False
+    self.message.power_setpoints_valid = False
     for buffer in self.sbuffers:
-      self.parse_message(buffer)
+      self.parse_message(self.sbuffers[buffer])
       self.serial_output.put(self.message)
     self.serial_output.put(self.message)
 
