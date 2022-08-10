@@ -1,19 +1,24 @@
-import numpy as np
-import os
-from matplotlib import pyplot as plt
+import serial, re, os
+with serial.Serial("/dev/ttyS11", 115200, timeout=1) as ser:
+  #ser.write("\x1B[OS")
+  buffer = ""
+  ser.write("^[[11~".encode())
+  for i in range(100):
+    line = str(i) + "  " + str(ser.readline()) + "\n"
+    #print(line)
+    buffer += line
+    #print("--------{}---------".format(i))
 
-data = np.linspace(0,10,10)
-data2 = np.linspace(10,0,10)
-fig = plt.figure()
-plt.subplot(2,2,1)
-plt.plot(data)
-plt.subplot(2,2,2)
-plt.plot(data)
-plt.subplot(2,2,3)
-plt.plot(data)
-
-ax = fig.axes[0]
-ax2 = fig.axes[2]
-ax2.plot(data2)
-ax.plot(data2)
-plt.show()
+f = open("charger.txt", "w+")
+f.write(buffer)
+print(buffer)
+#buffer = ""
+#with open("log.txt") as f:
+#  buffer = f.read()
+#matched_lines = re.findall("\#[0-9A-B].*\n", buffer)
+#for line in matched_lines:
+#  print(line)
+#
+#temperatures = []
+#voltages = []
+#for line in matched_lines:

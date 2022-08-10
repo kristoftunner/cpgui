@@ -1,6 +1,4 @@
-from concurrent.futures import thread
-from distutils.core import setup
-import time
+import time, os
 from PyQt5.QtWidgets import QApplication 
 import queue, sys, threading, logging
 
@@ -52,7 +50,7 @@ def fronius_modbus_thread(fronius_modbus : fronius.FroniusModbusIf):
   fronius_modbus.update()
 
 if __name__ == '__main__':
-  setup_logging() 
+  setup_logging()
   app = QApplication(sys.argv)
 
   lower_serial_iqueue = queue.Queue()

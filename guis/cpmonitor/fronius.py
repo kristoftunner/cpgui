@@ -33,21 +33,23 @@ class FroniusManager():
 
   def get_voltages(self):
     if self.fronius_status.message_valid:
-      return np.array([self.fronius_status.measurements["L1Voltage"], self.fronius_status.measurements["L2Voltage"], self.fronius_status.measurements["L3Voltage"]], dtype=np.float32)
-    else:
-      None
+      return np.array([self.fronius_status.measurements["L1Voltage"], self.fronius_status.measurements["L2Voltage"], self.fronius_status.measurements["L3Voltage"]], dtype=np.float32).reshape((1,3))
 
   def get_currents(self):
     if self.fronius_status.message_valid:
-      return np.array([self.fronius_status.measurements["L1Current"], self.fronius_status.measurements["L2Current"], self.fronius_status.measurements["L3Current"]], dtype=np.float32)
-    else:
-      None
+      return np.array([self.fronius_status.measurements["L1Current"], self.fronius_status.measurements["L2Current"], self.fronius_status.measurements["L3Current"]], dtype=np.float32).reshape((1,3))
 
   def get_frequency(self):
-    pass
+     if self.fronius_status.message_valid:
+      return self.fronius_status.measurements["Frequency"]
 
   def get_power(self):
-    pass
+    if self.fronius_status.message_valid:
+      return self.fronius_status.measurements["Power"]
+
+  def is_measurement_valid(self):
+    return self.fronius_status.message_valid
+      
 class FroniusModbusIf():
   def __init__(self, port : str, baudrate : int, address, modbus_input : queue.Queue, modbus_output: queue.Queue) -> None:
     self.logger = logging.getLogger("cplog")

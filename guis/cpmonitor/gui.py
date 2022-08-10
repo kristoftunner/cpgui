@@ -27,12 +27,20 @@ class FroniusMeasurementData():
     self.currents = np.zeros((1,3), dtype=np.float32)
     self.power = np.array([0])
     self.frequency = np.array([0])
+
+  def update_measurements(self, voltages: np.array, currents: np.array, power: float, frequency: float):
+    self.voltages = np.concatenate((self.voltages, voltages), axis=0)
+    self.currents = np.concatenate((self.currents, currents), axis=0)
+    self.power = np.append(self.power, values=power)
+    self.frequency = np.append(self.frequency, values=frequency)
+
 class AppWindow(QMainWindow):
   def __init__(self, upper_tesla : tesla.TeslaManager, lower_tesla : tesla.TeslaManager, fronius : fronius.FroniusManager) -> None:
     super().__init__()
     self.teslas = {"upper" : upper_tesla, "lower" : lower_tesla}
     self.tesla_measurements = {"upper" : TeslaMeasurementData(), "lower" : TeslaMeasurementData()}
     self.fronius = fronius
+    self.fronius_measurements = FroniusMeasurementData()
     loadUi("guis/cpmonitor/cpmonitor.ui", self)
     self.battery_plot_layout = self.findChild(QHBoxLayout, "battery_plot_layout")
     self.inverter_plot_layout = self.findChild(QHBoxLayout, "inverter_plot_layout")
@@ -45,70 +53,72 @@ class AppWindow(QMainWindow):
     self.init_battery_plots()
     self.init_inverter_plots()
     self.battery_timer = QTimer()
-    self.battery_timer.timeout.connect(self.draw_battery_plots)
-    self.battery_timer.start(1000)
+    self.battery_timer.timeout.connect(self.update_plots)
+    self.battery_timer.start(2000)
 
   def update_plots(self):
-    self.draw_battery_plots()
-    #self.draw_inverter_plots()
+    self.update_measurements()
+    if self.tab.currentIndex() == 1:
+      self.draw_battery_plots()
+    elif self.tab.currentIndex() == 2:
+      self.draw_inverter_plots()
 
-  def init_battery_plots(self):
-    self.battery_canvases = []
-    for index, measurement in enumerate(self.tesla_measurements):
-      graph_container = QWidget()
-      single_tesla_layout = QVBoxLayout(graph_container)
-      voltage_canvas = FigureCanvasQTAgg(plt.figure())
-      self.battery_canvases.append(voltage_canvas)
-      voltage_ax = plt.axes()
-      voltage_ax.set_title("battery voltages of {} tesla".format(measurement))
-      voltage_canvas.draw()
-      single_tesla_layout.addWidget(voltage_canvas)
-      
-      temperature_canvas = FigureCanvasQTAgg(plt.figure())
-      self.battery_canvases.append(temperature_canvas)
-      temperature_ax = plt.axes()
-      temperature_ax.set_title("battery temperatures of {} tesla".format(measurement))
-      temperature_canvas.draw()
-      single_tesla_layout.addWidget(temperature_canvas)
-      self.battery_plot_layout.addWidget(graph_container)
-
-  def draw_battery_plots(self):
+  def update_measurements(self):
     # update the tesla measurements
     for tesla, measurement in zip(self.teslas, self.tesla_measurements):
       self.teslas[tesla].update_measurements()
       self.tesla_measurements[measurement].update_measurements(self.teslas[tesla].get_temperatures(), self.teslas[tesla].get_voltages())
+    
+    self.fronius.update_measurements()
+    if self.fronius.is_measurement_valid():
+      self.fronius_measurements.update_measurements(self.fronius.get_voltages(), self.fronius.get_currents(), 
+                                                    self.fronius.get_power(), self.fronius.get_frequency())
+
+  def init_battery_plots(self):
+    self.battery_canvas = FigureCanvasQTAgg(plt.figure())
+    graph_container = QWidget()
+    single_tesla_layout = QVBoxLayout(graph_container)
+    for index, measurement in enumerate(self.tesla_measurements):
+      plt.subplot(2,2,index*2 + 1)
+      plt.title("battery voltages of {} tesla".format(measurement))
+      plt.subplot(2,2,index*2 + 2)
+      plt.title("battery temperatures of {} tesla".format(measurement))
+      self.battery_canvas.draw()
+      single_tesla_layout.addWidget(self.battery_canvas)
+    self.battery_plot_layout.addWidget(graph_container)
+
+  def draw_battery_plots(self):
 
     # draw the battery plots
     for index, measurement in enumerate(self.tesla_measurements):
-      voltage_canvas = self.battery_canvases[index*2] 
-      voltage_ax = voltage_canvas.figure.axes[0] # we have one axe per 
+      voltage_ax = self.battery_canvas.figure.axes[index*2] # we have one axe per 
       voltage_ax.plot(self.tesla_measurements[measurement].voltages, 'o')
-      voltage_canvas.draw()
-      
-      temperature_canvas = self.battery_canvases[index*2 + 1] 
-      temperature_ax = temperature_canvas.figure.axes[0]
+      temperature_ax = self.battery_canvas.figure.axes[index*2+1]
       temperature_ax.plot(self.tesla_measurements[measurement].temperatures, 'o')
-      temperature_canvas.draw()
+      self.battery_canvas.draw()
 
   def init_inverter_plots(self):
-    self.inverter_canvases = []
     graph_container = QWidget()
     single_inverter_layout = QVBoxLayout(graph_container)
-    inverter_canvas = FigureCanvasQTAgg(plt.figure())
-    self.inverter_canvases.append(inverter_canvas)
+    self.inverter_canvas = FigureCanvasQTAgg(plt.figure())
     plt.subplot(2,2,1)
     plt.title("Fronius currents")
     plt.subplot(2,2,2)
     plt.title("Fronius voltages")
     plt.subplot(2,2,3)
     plt.title("Fronius power")
-    inverter_canvas.draw()
-    single_inverter_layout.addWidget(inverter_canvas)
-      
+    self.inverter_canvas.draw()
+    single_inverter_layout.addWidget(self.inverter_canvas)
     self.inverter_plot_layout.addWidget(graph_container)
 
   def draw_inverter_plots(self):
-    self.fronius.update_measurements()
+    current_ax = self.inverter_canvas.figure.axes[0]
+    voltage_ax = self.inverter_canvas.figure.axes[1]
+    power_ax = self.inverter_canvas.figure.axes[2]
+    current_ax.plot(self.fronius_measurements.currents, 'o')
+    voltage_ax.plot(self.fronius_measurements.voltages, 'o')
+    power_ax.plot(self.fronius_measurements.power, 'o')
+    self.inverter_canvas.draw()
      
   def draw_example_plots(self):
     index = 0
