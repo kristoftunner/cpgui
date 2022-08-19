@@ -41,13 +41,16 @@ def generate_fronius_input() -> fronius.FroniusMessage:
   return message
 
 def tesla_serial_thread(tesla_serial : tesla.TeslaSerialReader):
-  sbuffer = generate_tesla_input("battery")
-  tesla_serial.sbuffers["battery"] = sbuffer
-  tesla_serial.update()  
+  while True:
+    tesla_serial.readout_tesla()
+    tesla_serial.update() 
+    time.sleep(1) 
 
 def fronius_modbus_thread(fronius_modbus : fronius.FroniusModbusIf):
-  fronius_modbus.message = generate_fronius_input()
-  fronius_modbus.update()
+  while True:
+    fronius_modbus.read_measurements()
+    fronius_modbus.update()
+    time.sleep(1)
 
 if __name__ == '__main__':
   setup_logging()
@@ -55,13 +58,13 @@ if __name__ == '__main__':
 
   lower_serial_iqueue = queue.Queue()
   lower_serial_oqueue = queue.Queue()
-  lower_tesla_serial = tesla.TeslaSerialReader("/dev/ttyUSB0", "lower", lower_serial_iqueue, lower_serial_oqueue)
+  lower_tesla_serial = tesla.TeslaSerialReader("COM4", "lower", lower_serial_iqueue, lower_serial_oqueue)
   lower_tesla = tesla.TeslaManager("lower", lower_serial_iqueue, lower_serial_oqueue)
   
   upper_serial_iqueue = queue.Queue()
   upper_serial_oqueue = queue.Queue()
+  upper_tesla_serial = tesla.TeslaSerialReader("COM6", "upper", upper_serial_iqueue, upper_serial_oqueue)
   upper_tesla = tesla.TeslaManager("upper", upper_serial_iqueue, upper_serial_oqueue)
-  upper_tesla_serial = tesla.TeslaSerialReader("/dev/ttyUSB0", "lower", upper_serial_iqueue, upper_serial_oqueue)
 
   fronius_modbus_iqueue = queue.Queue()
   fronius_modbus_oqueue = queue.Queue()

@@ -59,7 +59,8 @@ class FroniusModbusIf():
     self.baudrate = baudrate 
     self.address = address
     self.instrument = None
-    #self.instrument = minimalmodbus.Instrument(port=port, slaveaddress=address, debug=True)
+    self.instrument = minimalmodbus.Instrument(port=port, slaveaddress=address, debug=True)
+    self.instrument.serial.baudrate = 9600
     self.input_queue = modbus_input
     self.output_queue = modbus_output
     self.message = FroniusMessage()

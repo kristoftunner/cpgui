@@ -81,8 +81,10 @@ class AppWindow(QMainWindow):
     for index, measurement in enumerate(self.tesla_measurements):
       plt.subplot(2,2,index*2 + 1)
       plt.title("battery voltages of {} tesla".format(measurement))
+      plt.ylim(3.5,3.9)
       plt.subplot(2,2,index*2 + 2)
       plt.title("battery temperatures of {} tesla".format(measurement))
+      plt.ylim(20,40)
       self.battery_canvas.draw()
       single_tesla_layout.addWidget(self.battery_canvas)
     self.battery_plot_layout.addWidget(graph_container)

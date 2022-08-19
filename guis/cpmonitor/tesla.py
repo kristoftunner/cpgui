@@ -4,7 +4,7 @@ from typing import Dict
 import re, logging
 import numpy as np
 
-SCREENS = [{"ch1" : 25}, {"ch2" : 25}, {"ch3" : 25}, {"battery" : 24}]
+SCREENS = {"ch1" : 25, "ch2" : 25, "ch3" : 25, "battery" : 24}
 
 class TeslaSerialMessage():
   def __init__(self) -> None:
@@ -31,19 +31,19 @@ class TeslaSerialReader():
 
   def parse_message(self, sbuffer : SerialBuffer):
     if sbuffer.source == "battery":
-      matched_lines = re.findall("\#[0-9A-B].*\n", sbuffer.buffer)
-
+      matched_lines = re.findall("\#[0-9A-B] 3\..*\n", sbuffer.sbuffer)
       #iterate trough half of the list and extract temperatures and voltages
       voltages = list()
       temperatures = list()
-      for single_match in matched_lines[0:len(matched_lines)//2 + 1]:
+      for single_match in matched_lines[0:len(matched_lines)//2]:
         [voltages.append(float(voltage)) for voltage in re.findall("[0-9]*\.[0-9]*",single_match)]
         [temperatures.append(float(temperature)) for temperature in re.findall(" [0-9]+[ \n]", single_match)]
-      voltages = np.array(voltages, dtype=np.float32).reshape((1,80))
-      temperatures = np.array(temperatures, dtype=np.float32).reshape((1,50))
-      self.message.measurements["voltages"] = np.concatenate((self.message.measurements["voltages"], voltages), axis=0)
-      self.message.measurements["temperatures"] = np.concatenate((self.message.measurements["temperatures"], temperatures), axis=0)
-      self.message.measurements_valid = True
+      if len(voltages) == 80 and len(temperatures) == 50:
+        voltages = np.array(voltages, dtype=np.float32).reshape((1,80))
+        temperatures = np.array(temperatures, dtype=np.float32).reshape((1,50))
+        self.message.measurements["voltages"] = voltages
+        self.message.measurements["temperatures"] = temperatures
+        self.message.measurements_valid = True
     elif sbuffer.source == "ch1":
       pass
     elif sbuffer.source == "ch2":
@@ -55,21 +55,26 @@ class TeslaSerialReader():
     with serial.Serial(self.port, self.baudrate, timeout=1) as ser:
       for (key,value) in SCREENS.items():
         if key == "ch1":
-          ser.write("\x1B[OP")
+          ser.write("^[[11~".encode())
+          ser.write("\r".encode())
         elif key == "ch2":
-          ser.write("\x1B[OQ")
+          ser.write("^[[12~".encode())
+          ser.write("\r".encode())
         elif key == "ch3":
-          ser.write("\x1B[OR")
+          ser.write("^[[13~".encode())
+          ser.write("\r".encode())
         elif key == "battery":
-          ser.write("\x1B[OS")
+          ser.write("^[[14~".encode())
+          ser.write("\r".encode())
         else:
           raise ValueError("wrong screen was selected!")
-        sbuffer = SerialBuffer()
-        for i in range(value):
-          sbuffer.buffer += ser.readline()
+        sbuffer = SerialBuffer("","")
+        for i in range(value*2):
+          line = ser.readline()
+          sbuffer.sbuffer += line.decode()
         sbuffer.source = key
         self.sbuffers[key] = sbuffer
-        self.logger.debug("received at tesla {}: from channel:{} - {}".format(self.id, sbuffer.source, sbuffer.buffer))
+        self.logger.debug("received at tesla {}: from channel:{} - {}".format(self.id, sbuffer.source, sbuffer.sbuffer))
   
   def update(self):
     self.message.measurements_valid = False
@@ -104,7 +109,7 @@ class TeslaManager():
   def update_measurements(self):
     """ flush the input queue and get the latest message"""
     while not self.input_queue.empty():
-      tesla_status = self.input_queue.get()
+      self.tesla_status = self.input_queue.get()
   
   def get_temperatures(self):
     data = np.zeros((1,50), dtype=np.float32)
