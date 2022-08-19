@@ -1,19 +1,21 @@
 import time, os
 from PyQt5.QtWidgets import QApplication 
 import queue, sys, threading, logging
+import numpy as np
 
 # own scripts
 import gui, tesla, fronius
 
 def setup_logging():
   logger = logging.getLogger("cplog")
+  # Create handlers
   c_handler = logging.StreamHandler()
   f_handler = logging.FileHandler('file.log')
-  c_handler.setLevel(logging.WARNING)
-  f_handler.setLevel(logging.ERROR)
+  c_handler.setLevel(logging.DEBUG)
+  f_handler.setLevel(logging.DEBUG)
 
   # Create formatters and add it to handlers
-  c_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+  c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
   f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
   c_handler.setFormatter(c_format)
   f_handler.setFormatter(f_format)
@@ -21,10 +23,19 @@ def setup_logging():
   # Add handlers to the logger
   logger.addHandler(c_handler)
   logger.addHandler(f_handler)
+  logger.setLevel(logging.DEBUG)
+  
 
+  return logger
 
 def generate_random_tesla_input(source : str) -> tesla.SerialBuffer:
-  pass
+  """ generate  random"""
+  message = tesla.TeslaSerialMessage()
+  rng = np.random.default_rng()
+  message.measurements_valid = True
+  message.measurements["voltages"] = rng.random((1,80), dtype=np.float32) * 0.8 + 3.2
+  message.measurements["temperatures"] = rng.random((1,50), dtype=np.float32) * 3 + 28.0
+  return message 
 
 def generate_tesla_input(source : str) -> tesla.SerialBuffer:
   sbuffer = tesla.SerialBuffer
@@ -41,9 +52,12 @@ def generate_fronius_input() -> fronius.FroniusMessage:
   return message
 
 def tesla_serial_thread(tesla_serial : tesla.TeslaSerialReader):
-  sbuffer = generate_tesla_input("battery")
-  tesla_serial.sbuffers["battery"] = sbuffer
-  tesla_serial.update()  
+  while True:
+    sbuffer = generate_tesla_input("battery")
+    tesla_serial.sbuffers["battery"] = sbuffer
+    tesla_serial.update()  
+    tesla_serial.sbuffers["battery"] = tesla.SerialBuffer("", "")
+    time.sleep(2)
 
 def fronius_modbus_thread(fronius_modbus : fronius.FroniusModbusIf):
   fronius_modbus.message = generate_fronius_input()
@@ -51,6 +65,8 @@ def fronius_modbus_thread(fronius_modbus : fronius.FroniusModbusIf):
 
 if __name__ == '__main__':
   setup_logging()
+  logger = logging.getLogger("cplog")
+  logger.debug("hello from main")
   app = QApplication(sys.argv)
 
   lower_serial_iqueue = queue.Queue()

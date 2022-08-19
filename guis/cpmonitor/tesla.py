@@ -39,11 +39,12 @@ class TeslaSerialReader():
       for single_match in matched_lines[0:len(matched_lines)//2 + 1]:
         [voltages.append(float(voltage)) for voltage in re.findall("[0-9]*\.[0-9]*",single_match)]
         [temperatures.append(float(temperature)) for temperature in re.findall(" [0-9]+[ \n]", single_match)]
-      voltages = np.array(voltages, dtype=np.float32).reshape((1,80))
-      temperatures = np.array(temperatures, dtype=np.float32).reshape((1,50))
-      self.message.measurements["voltages"] = np.concatenate((self.message.measurements["voltages"], voltages), axis=0)
-      self.message.measurements["temperatures"] = np.concatenate((self.message.measurements["temperatures"], temperatures), axis=0)
-      self.message.measurements_valid = True
+      if len(temperatures) == 50 and len(voltages) == 80:
+        voltages = np.array(voltages, dtype=np.float32).reshape((1,80))
+        temperatures = np.array(temperatures, dtype=np.float32).reshape((1,50))
+        self.message.measurements["voltages"] = voltages
+        self.message.measurements["temperatures"] = temperatures
+        self.message.measurements_valid = True
     elif sbuffer.source == "ch1":
       pass
     elif sbuffer.source == "ch2":
@@ -104,14 +105,16 @@ class TeslaManager():
   def update_measurements(self):
     """ flush the input queue and get the latest message"""
     while not self.input_queue.empty():
-      tesla_status = self.input_queue.get()
-  
-  def get_temperatures(self):
-    data = np.zeros((1,50), dtype=np.float32)
-    data[0,:] = self.tesla_status.measurements["temperatures"]
-    return data 
+      self.tesla_status = self.input_queue.get()
 
-  def get_voltages(self):
-    data = np.zeros((1,80), dtype=np.float32)
-    data[0,:] = self.tesla_status.measurements["voltages"]
-    return data 
+  def measurement_recvd(self):
+    return self.tesla_status.measurements_valid
+  
+  def get_measurements(self):
+    """ read the measurements and invalidate the current one """
+    temperatures = np.zeros((1,50), dtype=np.float32)
+    temperatures[0,:] = self.tesla_status.measurements["temperatures"]
+    voltages = np.zeros((1,80), dtype=np.float32)
+    voltages[0,:] = self.tesla_status.measurements["voltages"]
+    self.tesla_status = TeslaSerialMessage()
+    return temperatures, voltages 
