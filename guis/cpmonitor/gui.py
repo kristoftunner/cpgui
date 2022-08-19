@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QDialog, QApplication, QWidget, \
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib import pyplot as plt
 import numpy as np
-
+import logging
 import tesla, fronius 
 
 class TeslaMeasurementData():
@@ -23,20 +23,29 @@ class TeslaMeasurementData():
 
 class FroniusMeasurementData():
   def __init__(self) -> None:
+    self.initial = True
     self.voltages = np.zeros((1,3), dtype=np.float32)
     self.currents = np.zeros((1,3), dtype=np.float32)
     self.power = np.array([0])
     self.frequency = np.array([0])
 
   def update_measurements(self, voltages: np.array, currents: np.array, power: float, frequency: float):
-    self.voltages = np.concatenate((self.voltages, voltages), axis=0)
-    self.currents = np.concatenate((self.currents, currents), axis=0)
-    self.power = np.append(self.power, values=power)
-    self.frequency = np.append(self.frequency, values=frequency)
+    if self.initial:
+      self.voltages = voltages.reshape((1,3))
+      self.currents = currents.reshape((1,3))
+      self.power = np.array([power])
+      self.frequency = np.array([frequency])
+      self.initial = False
+    else:
+      self.voltages = np.concatenate((self.voltages, voltages), axis=0)
+      self.currents = np.concatenate((self.currents, currents), axis=0)
+      self.power = np.append(self.power, values=power)
+      self.frequency = np.append(self.frequency, values=frequency)
 
 class AppWindow(QMainWindow):
   def __init__(self, upper_tesla : tesla.TeslaManager, lower_tesla : tesla.TeslaManager, fronius : fronius.FroniusManager) -> None:
     super().__init__()
+    self.logger = logging.getLogger("cplog")
     self.teslas = {"upper" : upper_tesla, "lower" : lower_tesla}
     self.tesla_measurements = {"upper" : TeslaMeasurementData(), "lower" : TeslaMeasurementData()}
     self.fronius = fronius
@@ -61,7 +70,7 @@ class AppWindow(QMainWindow):
     self.battery_timer.start(2000)
 
     self.max_charge = 5000
-    self.max_discharge = 5000
+    self.max_discharge = 12000
     self.do_draw_battery_plots = False 
     self.do_draw_inverter_plots = False
 
@@ -143,9 +152,12 @@ class AppWindow(QMainWindow):
         current_ax = self.inverter_canvas.figure.axes[0]
         voltage_ax = self.inverter_canvas.figure.axes[1]
         power_ax = self.inverter_canvas.figure.axes[2]
-        current_ax.plot(self.fronius_measurements.currents[1:,:], 'o')
-        voltage_ax.plot(self.fronius_measurements.voltages[1:,:], 'o')
-        power_ax.plot(self.fronius_measurements.power[1:], 'o')
+        self.logger.debug("currents shape: {}".format(self.fronius_measurements.currents.shape))
+        self.logger.debug("voltages shape: {}".format(self.fronius_measurements.voltages.shape))
+        self.logger.debug("power shape: {}".format(self.fronius_measurements.power.shape))
+        current_ax.plot(self.fronius_measurements.currents, 'o')
+        voltage_ax.plot(self.fronius_measurements.voltages, 'o')
+        power_ax.plot(self.fronius_measurements.power, 'o')
         self.inverter_canvas.draw()
         self.do_draw_inverter_plots = False
      
@@ -162,11 +174,9 @@ class AppWindow(QMainWindow):
           self.teslas["upper"].start(channel_power, "ch2")
           self.teslas["lower"].start(channel_power, "ch2")
           self.teslas["lower"].start(channel_power, "ch2")
-          print("power of teslas set")
         else:
           # discharge
           self.fronius.set_power(power)
-          print("power of fronius is set")
     else:
       self.start_button.setStyleSheet("background-color: red")
       self.start_button.setText("Stopped")

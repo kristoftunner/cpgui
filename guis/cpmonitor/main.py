@@ -55,13 +55,13 @@ def tesla_serial_thread(tesla_serial : tesla.TeslaSerialReader):
   while True:
     tesla_serial.readout_tesla()
     tesla_serial.update() 
-    time.sleep(1) 
+    time.sleep(2) 
 
 def fronius_modbus_thread(fronius_modbus : fronius.FroniusModbusIf):
   while True:
     fronius_modbus.read_measurements()
     fronius_modbus.update()
-    time.sleep(1)
+    time.sleep(2)
 
 if __name__ == '__main__':
   setup_logging()
@@ -81,7 +81,7 @@ if __name__ == '__main__':
 
   fronius_modbus_iqueue = queue.Queue()
   fronius_modbus_oqueue = queue.Queue()
-  fronius_modbus = fronius.FroniusModbusIf("/dev/ttyUSB0", 19200, 2, fronius_modbus_iqueue, fronius_modbus_oqueue)
+  fronius_modbus = fronius.FroniusModbusIf("COM7", 9600, 1, fronius_modbus_iqueue, fronius_modbus_oqueue)
   fronius_manager = fronius.FroniusManager(fronius_modbus_iqueue, fronius_modbus_oqueue)
 
   t_lower_tesla = threading.Thread(target=tesla_serial_thread, args=(lower_tesla_serial,))

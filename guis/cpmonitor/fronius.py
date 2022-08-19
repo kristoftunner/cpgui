@@ -53,13 +53,13 @@ class FroniusManager():
 class FroniusModbusIf():
   def __init__(self, port : str, baudrate : int, address, modbus_input : queue.Queue, modbus_output: queue.Queue) -> None:
     self.logger = logging.getLogger("cplog")
-    self.max_power = 5000 # TODO: update this number
+    self.max_power = 12000 # TODO: update this number
     self.port = port
     self.power_setpoint = 0
     self.baudrate = baudrate 
     self.address = address
     self.instrument = None
-    self.instrument = minimalmodbus.Instrument(port=port, slaveaddress=address, debug=True)
+    self.instrument = minimalmodbus.Instrument(port=port, slaveaddress=address, debug=False)
     self.instrument.serial.baudrate = 9600
     self.input_queue = modbus_input
     self.output_queue = modbus_output
@@ -69,7 +69,7 @@ class FroniusModbusIf():
     if power > self.max_power:
       self.logger.warning("Requested power from Fronius is higher than the nameplate value")
     else:
-      percentage : int = int(((power / self.max_power) * 100))
+      percentage : int = abs(int(((power / self.max_power) * 100)))
       self.power_setpoint = power
       self.logger.debug("precentage set for the fronius throttle is: {}%".format(percentage))
       self.instrument.write_register(POWER_SETPOINT_REG_BASE, percentage,functioncode=6)
@@ -87,21 +87,25 @@ class FroniusModbusIf():
     # read the voltages, power and frequency
     is_valid = True
     measurements = self.instrument.read_registers(AC_VOLTAGE_REG_BASE, 14, functioncode=3)
-    if len(measurements) == 14:
-      self.message.measurements["L1Voltage"] = measurements[0] * math.pow(10,measurements[3])
-      self.message.measurements["L2Voltage"] = measurements[1] * math.pow(10,measurements[3])
-      self.message.measurements["L3Voltage"] = measurements[2] * math.pow(10,measurements[3])
-      self.message.measurements["Power"] = measurements[4] * math.pow(10, measurements[5])
-      self.message.measurements["Frequency"] = measurements[6] * math.pow(10, measurements[7])
+    if len(measurements) == 14 and measurements[0] != 0:
+      voltage_scale = np.array([measurements[3]]).astype(np.int16)[0]
+      power_scale = np.array([measurements[5]]).astype(np.int16)[0]
+      frequency_scale = np.array([measurements[7]]).astype(np.int16)[0]
+      self.message.measurements["L1Voltage"] = measurements[0] * math.pow(10,voltage_scale)
+      self.message.measurements["L2Voltage"] = measurements[1] * math.pow(10,voltage_scale)
+      self.message.measurements["L3Voltage"] = measurements[2] * math.pow(10,voltage_scale)
+      self.message.measurements["Power"] = measurements[4] * math.pow(10, power_scale)
+      self.message.measurements["Frequency"] = measurements[6] * math.pow(10, frequency_scale)
     else:
       self.logger.warning("read failed from fronius at reg: {}".format(AC_VOLTAGE_REG_BASE))
       is_valid = False 
     # read the currents
     measurements = self.instrument.read_registers(AC_CURRENT_REG_BASE, 5)
     if len(measurements) == 5:
-      self.message.measurements["L1Current"] = measurements[1] * math.pow(10, measurements[4])
-      self.message.measurements["L2Current"] = measurements[2] * math.pow(10, measurements[4])
-      self.message.measurements["L3Current"] = measurements[3] * math.pow(10, measurements[4])
+      current_scale = np.array([measurements[4]]).astype(np.int16)[0]
+      self.message.measurements["L1Current"] = measurements[1] * math.pow(10, current_scale)
+      self.message.measurements["L2Current"] = measurements[2] * math.pow(10, current_scale)
+      self.message.measurements["L3Current"] = measurements[3] * math.pow(10, current_scale)
     else:
       self.logger.warning("read failed from fronius at reg: {}".format(AC_CURRENT_REG_BASE))
       is_valid = False 

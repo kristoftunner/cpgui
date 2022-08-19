@@ -74,7 +74,6 @@ class TeslaSerialReader():
           sbuffer.sbuffer += line.decode()
         sbuffer.source = key
         self.sbuffers[key] = sbuffer
-        self.logger.debug("received at tesla {}: from channel:{} - {}".format(self.id, sbuffer.source, sbuffer.sbuffer))
   
   def update(self):
     self.message.measurements_valid = False
@@ -111,12 +110,14 @@ class TeslaManager():
     while not self.input_queue.empty():
       self.tesla_status = self.input_queue.get()
   
-  def get_temperatures(self):
-    data = np.zeros((1,50), dtype=np.float32)
-    data[0,:] = self.tesla_status.measurements["temperatures"]
-    return data 
-
-  def get_voltages(self):
-    data = np.zeros((1,80), dtype=np.float32)
-    data[0,:] = self.tesla_status.measurements["voltages"]
-    return data 
+  def measurement_recvd(self):
+    return self.tesla_status.measurements_valid
+  
+  def get_measurements(self):
+    """ read the measurements and invalidate the current one """
+    temperatures = np.zeros((1,50), dtype=np.float32)
+    temperatures[0,:] = self.tesla_status.measurements["temperatures"]
+    voltages = np.zeros((1,80), dtype=np.float32)
+    voltages[0,:] = self.tesla_status.measurements["voltages"]
+    self.tesla_status = TeslaSerialMessage()
+    return temperatures, voltages 
