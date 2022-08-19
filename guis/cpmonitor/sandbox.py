@@ -47,6 +47,7 @@ instrument.serial.baudrate = 9600
 #instrument.write_register(40236, 1, functioncode=6)
 #time.sleep(10)
 regs = instrument.read_registers(AC_VOLTAGE_REG_BASE, 1, functioncode=3)
+instrument.read_register()
 if regs != None:
   print(regs)
 #instrument.write_register(40236, 1, functioncode=6)
