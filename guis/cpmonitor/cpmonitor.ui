@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="control_tab">
        <attribute name="title">
@@ -26,11 +26,60 @@
        </attribute>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
-         <widget class="QGroupBox" name="control_groupbox">
-          <property name="title">
-           <string>Controls</string>
-          </property>
-         </widget>
+         <layout class="QGridLayout" name="gridLayout">
+          <item row="0" column="0">
+           <widget class="QGroupBox" name="groupBox">
+            <property name="title">
+             <string/>
+            </property>
+            <property name="checkable">
+             <bool>false</bool>
+            </property>
+            <widget class="QLabel" name="label">
+             <property name="geometry">
+              <rect>
+               <x>10</x>
+               <y>30</y>
+               <width>111</width>
+               <height>17</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string>Power request:</string>
+             </property>
+            </widget>
+            <widget class="QLineEdit" name="powerText">
+             <property name="geometry">
+              <rect>
+               <x>120</x>
+               <y>30</y>
+               <width>113</width>
+               <height>25</height>
+              </rect>
+             </property>
+            </widget>
+            <widget class="QPushButton" name="startButton">
+             <property name="geometry">
+              <rect>
+               <x>20</x>
+               <y>60</y>
+               <width>89</width>
+               <height>25</height>
+              </rect>
+             </property>
+             <property name="text">
+              <string>Start</string>
+             </property>
+             <property name="autoDefault">
+              <bool>false</bool>
+             </property>
+             <property name="flat">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </widget>
+          </item>
+         </layout>
         </item>
        </layout>
       </widget>

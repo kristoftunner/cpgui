@@ -4,7 +4,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QVBoxLayout, QDialog, QApplication, QWidget, \
                             QLabel, QMainWindow, QTabWidget, QFrame, QGridLayout,\
-                            QGroupBox, QScrollArea, QHBoxLayout
+                            QGroupBox, QScrollArea, QHBoxLayout, QPushButton, QLineEdit
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib import pyplot as plt
 import numpy as np
@@ -48,6 +48,10 @@ class AppWindow(QMainWindow):
     self.tab.setTabText(0, "controls")
     self.tab.setTabText(1, "battery measuerements")
     self.tab.setTabText(2, "inverter measuerements")
+    self.start_button = self.findChild(QPushButton, "startButton")
+    self.start_button.setCheckable(True)
+    self.start_button.pressed.connect(self.update_power)
+    self.power_text = self.findChild(QLineEdit, "powerText")
 
     # update the battery plots
     self.init_battery_plots()
@@ -55,6 +59,11 @@ class AppWindow(QMainWindow):
     self.battery_timer = QTimer()
     self.battery_timer.timeout.connect(self.update_plots)
     self.battery_timer.start(2000)
+
+    self.max_charge = 5000
+    self.max_discharge = 5000
+    self.do_draw_battery_plots = False 
+    self.do_draw_inverter_plots = False
 
   def update_plots(self):
     self.update_measurements()
@@ -67,10 +76,14 @@ class AppWindow(QMainWindow):
     # update the tesla measurements
     for tesla, measurement in zip(self.teslas, self.tesla_measurements):
       self.teslas[tesla].update_measurements()
-      self.tesla_measurements[measurement].update_measurements(self.teslas[tesla].get_temperatures(), self.teslas[tesla].get_voltages())
+      if self.teslas[tesla].measurement_recvd():
+        self.do_draw_battery_plots = True
+        temperatures, voltages = self.teslas[tesla].get_measurements()
+        self.tesla_measurements[measurement].update_measurements(temperatures, voltages)
     
     self.fronius.update_measurements()
     if self.fronius.is_measurement_valid():
+      self.do_draw_inverter_plots = True
       self.fronius_measurements.update_measurements(self.fronius.get_voltages(), self.fronius.get_currents(), 
                                                     self.fronius.get_power(), self.fronius.get_frequency())
 
@@ -92,12 +105,17 @@ class AppWindow(QMainWindow):
   def draw_battery_plots(self):
 
     # draw the battery plots
-    for index, measurement in enumerate(self.tesla_measurements):
-      voltage_ax = self.battery_canvas.figure.axes[index*2] # we have one axe per 
-      voltage_ax.plot(self.tesla_measurements[measurement].voltages, 'o')
-      temperature_ax = self.battery_canvas.figure.axes[index*2+1]
-      temperature_ax.plot(self.tesla_measurements[measurement].temperatures, 'o')
-      self.battery_canvas.draw()
+    if self.do_draw_battery_plots:
+      for index, measurement in enumerate(self.tesla_measurements):
+        if self.tesla_measurements[measurement].voltages.shape[0] > 1:
+          voltage_ax = self.battery_canvas.figure.axes[index*2] # we have one axe per 
+          voltage_shape = (self.tesla_measurements[measurement].voltages.shape[0]-1,self.tesla_measurements[measurement].voltages.shape[1])
+          voltage_ax.plot(self.tesla_measurements[measurement].voltages[1:,:].reshape(voltage_shape), 'o')
+          temperature_ax = self.battery_canvas.figure.axes[index*2+1]
+          temperature_shape = (self.tesla_measurements[measurement].temperatures.shape[0]-1,self.tesla_measurements[measurement].temperatures.shape[1])
+          temperature_ax.plot(self.tesla_measurements[measurement].temperatures[1:,:].reshape(temperature_shape), 'o')
+          self.battery_canvas.draw()
+      self.do_draw_battery_plots = False
 
   def init_inverter_plots(self):
     graph_container = QWidget()
@@ -105,47 +123,53 @@ class AppWindow(QMainWindow):
     self.inverter_canvas = FigureCanvasQTAgg(plt.figure())
     plt.subplot(2,2,1)
     plt.title("Fronius currents")
+    plt.ylabel("Current [A]")
+    plt.xlabel("measurement tick")
     plt.subplot(2,2,2)
     plt.title("Fronius voltages")
+    plt.ylabel("Voltage [V]")
+    plt.xlabel("meausrement tick")
     plt.subplot(2,2,3)
     plt.title("Fronius power")
+    plt.xlabel("measurement tick")
+    plt.ylabel("Power [W]")
     self.inverter_canvas.draw()
     single_inverter_layout.addWidget(self.inverter_canvas)
     self.inverter_plot_layout.addWidget(graph_container)
 
   def draw_inverter_plots(self):
-    current_ax = self.inverter_canvas.figure.axes[0]
-    voltage_ax = self.inverter_canvas.figure.axes[1]
-    power_ax = self.inverter_canvas.figure.axes[2]
-    current_ax.plot(self.fronius_measurements.currents, 'o')
-    voltage_ax.plot(self.fronius_measurements.voltages, 'o')
-    power_ax.plot(self.fronius_measurements.power, 'o')
-    self.inverter_canvas.draw()
+    if self.do_draw_inverter_plots:
+      if self.fronius_measurements.currents.shape[0] > 1:
+        current_ax = self.inverter_canvas.figure.axes[0]
+        voltage_ax = self.inverter_canvas.figure.axes[1]
+        power_ax = self.inverter_canvas.figure.axes[2]
+        current_ax.plot(self.fronius_measurements.currents[1:,:], 'o')
+        voltage_ax.plot(self.fronius_measurements.voltages[1:,:], 'o')
+        power_ax.plot(self.fronius_measurements.power[1:], 'o')
+        self.inverter_canvas.draw()
+        self.do_draw_inverter_plots = False
      
-  def draw_example_plots(self):
-    index = 0
-    for row in range(3):
-      graph_container = QWidget()
-      vertical_layout = QVBoxLayout(graph_container)
-      data1 = np.linspace(0,10,10)
-      data2 = np.linspace(2,12,10)
-      data = np.zeros((10,2))
-      data[:,0] = data1
-      data[:,1] = data2
-      index += 1
-
-      fig = plt.figure()
-      canvas = FigureCanvasQTAgg(fig)
-      ax = fig.add_subplot()
-      ax.set_title("asd")
-      ax.plot(data, 'o')
-      canvas.draw()
-      fig2 = plt.figure()
-      canvas2 = FigureCanvasQTAgg(fig2)
-      ax2 = fig2.add_subplot()
-      ax2.plot(data, 'o')
-      canvas2.draw()
-      vertical_layout.addWidget(canvas)
-      vertical_layout.addWidget(canvas2)
-
-      self.battery_plot_layout.addWidget(graph_container)
+  def update_power(self):
+    if self.start_button.isChecked() == False: # transition from unchecked to checked
+      self.start_button.setStyleSheet("background-color: green")
+      self.start_button.setText("Started")
+      power = float(self.power_text.text())
+      if power > self.max_discharge or power < self.max_charge:
+        if power > 0:
+          # charge
+          channel_power = power / 4
+          self.teslas["upper"].start(channel_power, "ch1")
+          self.teslas["upper"].start(channel_power, "ch2")
+          self.teslas["lower"].start(channel_power, "ch2")
+          self.teslas["lower"].start(channel_power, "ch2")
+          print("power of teslas set")
+        else:
+          # discharge
+          self.fronius.set_power(power)
+          print("power of fronius is set")
+    else:
+      self.start_button.setStyleSheet("background-color: red")
+      self.start_button.setText("Stopped")
+      self.fronius.set_power(0.0)
+      self.teslas["upper"].stop()
+      self.teslas["lower"].stop() 

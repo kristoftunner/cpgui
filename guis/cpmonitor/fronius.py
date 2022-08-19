@@ -71,6 +71,7 @@ class FroniusModbusIf():
     else:
       percentage : int = int(((power / self.max_power) * 100))
       self.power_setpoint = power
+      self.logger.debug("precentage set for the fronius throttle is: {}%".format(percentage))
       self.instrument.write_register(POWER_SETPOINT_REG_BASE, percentage,functioncode=6)
       self.instrument.write_register(THROTTLE_EN_REG_BASE, 1, functioncode=6)
 
