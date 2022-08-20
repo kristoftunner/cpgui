@@ -130,18 +130,24 @@ class AppWindow(QMainWindow):
     graph_container = QWidget()
     single_inverter_layout = QVBoxLayout(graph_container)
     self.inverter_canvas = FigureCanvasQTAgg(plt.figure())
-    plt.subplot(2,2,1)
-    plt.title("Fronius currents")
+    plt.subplot(2,3,1)
+    plt.title("Fronius L1 Voltage")
+    plt.ylabel("Voltage [A]")
+    plt.subplot(2,3,2)
+    plt.title("Fronius L2 Voltage")
+    plt.ylabel("Voltage [A]")
+    plt.subplot(2,3,3)
+    plt.title("Fronius L3 Voltage")
+    plt.ylabel("Voltage [A]")
+    plt.subplot(2,3,4)
+    plt.title("Fronius L2 current")
     plt.ylabel("Current [A]")
-    plt.xlabel("measurement tick")
-    plt.subplot(2,2,2)
-    plt.title("Fronius voltages")
-    plt.ylabel("Voltage [V]")
-    plt.xlabel("meausrement tick")
-    plt.subplot(2,2,3)
-    plt.title("Fronius power")
-    plt.xlabel("measurement tick")
-    plt.ylabel("Power [W]")
+    plt.subplot(2,3,5)
+    plt.title("Fronius L3 current")
+    plt.ylabel("Current [A]")
+    plt.subplot(2,3,6)
+    plt.title("Fronius L1 current")
+    plt.ylabel("Current [A]")
     self.inverter_canvas.draw()
     single_inverter_layout.addWidget(self.inverter_canvas)
     self.inverter_plot_layout.addWidget(graph_container)
@@ -149,15 +155,21 @@ class AppWindow(QMainWindow):
   def draw_inverter_plots(self):
     if self.do_draw_inverter_plots:
       if self.fronius_measurements.currents.shape[0] > 1:
-        current_ax = self.inverter_canvas.figure.axes[0]
-        voltage_ax = self.inverter_canvas.figure.axes[1]
-        power_ax = self.inverter_canvas.figure.axes[2]
+        l1_voltage_ax = self.inverter_canvas.figure.axes[0]
+        l2_voltage_ax = self.inverter_canvas.figure.axes[1]
+        l3_voltage_ax = self.inverter_canvas.figure.axes[2]
+        l1_current_ax = self.inverter_canvas.figure.axes[3]
+        l2_current_ax = self.inverter_canvas.figure.axes[4]
+        l3_current_ax = self.inverter_canvas.figure.axes[5]
         self.logger.debug("currents shape: {}".format(self.fronius_measurements.currents.shape))
         self.logger.debug("voltages shape: {}".format(self.fronius_measurements.voltages.shape))
         self.logger.debug("power shape: {}".format(self.fronius_measurements.power.shape))
-        current_ax.plot(self.fronius_measurements.currents, 'o')
-        voltage_ax.plot(self.fronius_measurements.voltages, 'o')
-        power_ax.plot(self.fronius_measurements.power, 'o')
+        l1_voltage_ax.plot(self.fronius_measurements.voltages[:,0], "-o", color="b")
+        l2_voltage_ax.plot(self.fronius_measurements.voltages[:,1], "-o", color="b")
+        l3_voltage_ax.plot(self.fronius_measurements.voltages[:,2], "-o", color="b")
+        l1_current_ax.plot(self.fronius_measurements.currents[:,0], "-o", color="r")
+        l2_current_ax.plot(self.fronius_measurements.currents[:,1], "-o", color="r")
+        l3_current_ax.plot(self.fronius_measurements.currents[:,2], "-o", color="r")
         self.inverter_canvas.draw()
         self.do_draw_inverter_plots = False
      

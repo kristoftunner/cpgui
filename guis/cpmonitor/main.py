@@ -41,7 +41,7 @@ def generate_tesla_input(source : str) -> tesla.SerialBuffer:
   sbuffer = tesla.SerialBuffer
   sbuffer.source = source
   with open("guis/cpmonitor/battery_screen.txt") as f:
-    sbuffer.buffer = f.read()
+    sbuffer.sbuffer = f.read()
   return sbuffer
 
 def generate_fronius_input() -> fronius.FroniusMessage:
@@ -53,15 +53,25 @@ def generate_fronius_input() -> fronius.FroniusMessage:
 
 def tesla_serial_thread(tesla_serial : tesla.TeslaSerialReader):
   while True:
-    tesla_serial.readout_tesla()
+    message = generate_tesla_input("battery")
+    tesla_serial.sbuffers["battery"] = message
     tesla_serial.update() 
-    time.sleep(2) 
+    time.sleep(2)
+  #while True:
+  #  tesla_serial.readout_tesla()
+  #  tesla_serial.update() 
+  #  time.sleep(2) 
 
 def fronius_modbus_thread(fronius_modbus : fronius.FroniusModbusIf):
   while True:
-    fronius_modbus.read_measurements()
+    message = generate_fronius_input()
+    fronius_modbus.message = message
     fronius_modbus.update()
-    time.sleep(2)
+    time.sleep(2) 
+  #while True:
+  #  fronius_modbus.read_measurements()
+  #  fronius_modbus.update()
+  #  time.sleep(2)
 
 if __name__ == '__main__':
   setup_logging()

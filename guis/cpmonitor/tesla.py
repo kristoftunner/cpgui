@@ -35,7 +35,7 @@ class TeslaSerialReader():
       #iterate trough half of the list and extract temperatures and voltages
       voltages = list()
       temperatures = list()
-      for single_match in matched_lines[0:len(matched_lines)//2]:
+      for single_match in matched_lines[0:len(matched_lines)]:
         [voltages.append(float(voltage)) for voltage in re.findall("[0-9]*\.[0-9]*",single_match)]
         [temperatures.append(float(temperature)) for temperature in re.findall(" [0-9]+[ \n]", single_match)]
       if len(voltages) == 80 and len(temperatures) == 50:
