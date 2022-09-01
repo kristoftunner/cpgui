@@ -103,7 +103,7 @@ class AppWindow(QMainWindow):
     for index, measurement in enumerate(self.tesla_measurements):
       plt.subplot(2,2,index*2 + 1)
       plt.title("battery voltages of {} tesla".format(measurement))
-      plt.ylim(3.5,3.9)
+      plt.ylim(3.4,3.9)
       plt.subplot(2,2,index*2 + 2)
       plt.title("battery temperatures of {} tesla".format(measurement))
       plt.ylim(20,40)

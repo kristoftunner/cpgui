@@ -31,11 +31,12 @@ class TeslaSerialReader():
 
   def parse_message(self, sbuffer : SerialBuffer):
     if sbuffer.source == "battery":
+      self.logger.debug("sbuffer is: {}".format(sbuffer.sbuffer))
       matched_lines = re.findall("\#[0-9A-B] 3\..*\n", sbuffer.sbuffer)
       #iterate trough half of the list and extract temperatures and voltages
       voltages = list()
       temperatures = list()
-      for single_match in matched_lines[0:len(matched_lines)]:
+      for single_match in matched_lines[0:len(matched_lines)//2]:
         [voltages.append(float(voltage)) for voltage in re.findall("[0-9]*\.[0-9]*",single_match)]
         [temperatures.append(float(temperature)) for temperature in re.findall(" [0-9]+[ \n]", single_match)]
       if len(voltages) == 80 and len(temperatures) == 50:

@@ -52,26 +52,26 @@ def generate_fronius_input() -> fronius.FroniusMessage:
   return message
 
 def tesla_serial_thread(tesla_serial : tesla.TeslaSerialReader):
+ # while True:
+ #   message = generate_tesla_input("battery")
+ #   tesla_serial.sbuffers["battery"] = message
+ #   tesla_serial.update() 
+ #   time.sleep(2)
   while True:
-    message = generate_tesla_input("battery")
-    tesla_serial.sbuffers["battery"] = message
+    tesla_serial.readout_tesla()
     tesla_serial.update() 
-    time.sleep(2)
-  #while True:
-  #  tesla_serial.readout_tesla()
-  #  tesla_serial.update() 
-  #  time.sleep(2) 
+    time.sleep(2) 
 
 def fronius_modbus_thread(fronius_modbus : fronius.FroniusModbusIf):
-  while True:
-    message = generate_fronius_input()
-    fronius_modbus.message = message
-    fronius_modbus.update()
-    time.sleep(2) 
   #while True:
-  #  fronius_modbus.read_measurements()
+  #  message = generate_fronius_input()
+  #  fronius_modbus.message = message
   #  fronius_modbus.update()
-  #  time.sleep(2)
+  #  time.sleep(2) 
+  while True:
+    fronius_modbus.read_measurements()
+    fronius_modbus.update()
+    time.sleep(2)
 
 if __name__ == '__main__':
   setup_logging()
@@ -81,12 +81,12 @@ if __name__ == '__main__':
 
   lower_serial_iqueue = queue.Queue()
   lower_serial_oqueue = queue.Queue()
-  lower_tesla_serial = tesla.TeslaSerialReader("COM4", "lower", lower_serial_iqueue, lower_serial_oqueue)
+  lower_tesla_serial = tesla.TeslaSerialReader("COM16", "lower", lower_serial_iqueue, lower_serial_oqueue)
   lower_tesla = tesla.TeslaManager("lower", lower_serial_iqueue, lower_serial_oqueue)
   
   upper_serial_iqueue = queue.Queue()
   upper_serial_oqueue = queue.Queue()
-  upper_tesla_serial = tesla.TeslaSerialReader("COM6", "upper", upper_serial_iqueue, upper_serial_oqueue)
+  upper_tesla_serial = tesla.TeslaSerialReader("COM4", "upper", upper_serial_iqueue, upper_serial_oqueue)
   upper_tesla = tesla.TeslaManager("upper", upper_serial_iqueue, upper_serial_oqueue)
 
   fronius_modbus_iqueue = queue.Queue()
